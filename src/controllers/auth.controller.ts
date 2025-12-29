@@ -5,25 +5,29 @@ import jwt from "jsonwebtoken";
 import { BadRequest, Created, Ok, Unauthorized } from "../middleware/response";
 
 export const register = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return BadRequest(res, "User already exists");
-    }
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return BadRequest(res, "User already exists");
+  }
 
-    const user = await User.create({ email, password });
-    const token = jwt.sign(
+  const user = await User.create({ email, password });
+  const token = jwt.sign(
     { userId: user._id },
     process.env.JWT_SECRET as string,
     { expiresIn: "7d" }
   );
 
-    return Created(res, {
+  return Created(
+    res,
+    {
       id: user._id,
       email: user.email,
-      token: token
-    }, "User registered successfully");
+      token: token,
+    },
+    "User registered successfully"
+  );
 };
 
 export const login = async (req: Request, res: Response) => {
@@ -42,4 +46,29 @@ export const login = async (req: Request, res: Response) => {
   );
 
   return Ok(res, { token }, "Login successful");
+};
+
+export const refreshToken = async (req: Request, res: Response) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return BadRequest(res, "Token is required");
+  }
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+    userId: string;
+  };
+
+  const user = await User.findById(decoded.userId);
+  if (!user) {
+    return Unauthorized(res, "User not found");
+  }
+
+  const newToken = jwt.sign(
+    { userId: user._id },
+    process.env.JWT_SECRET as string,
+    { expiresIn: "7d" }
+  );
+
+  return Ok(res, { token: newToken }, "Token refreshed successfully");
 };
