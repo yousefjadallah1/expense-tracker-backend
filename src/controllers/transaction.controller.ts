@@ -60,28 +60,38 @@ export const addTransaction = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/transactions - Get all transactions for current wallet
+// GET /api/transactions - Get all transactions for a wallet
+// Query params: month (1-12), year (e.g., 2025)
 export const getTransactions = async (req: Request, res: Response) => {
   try {
     const now = new Date();
-    const thisMonth = now.getMonth() + 1;
-    const thisYear = now.getFullYear();
+    const month = req.query.month ? parseInt(req.query.month as string) : now.getMonth() + 1;
+    const year = req.query.year ? parseInt(req.query.year as string) : now.getFullYear();
+
+    // Validate month and year
+    if (month < 1 || month > 12) {
+      return BadRequest(res, "Month must be between 1 and 12");
+    }
+
+    if (year < 2000 || year > 2100) {
+      return BadRequest(res, "Invalid year");
+    }
 
     const wallet = await Wallet.findOne({
       userId: req.userId,
-      month: thisMonth,
-      year: thisYear,
+      month,
+      year,
     });
 
     if (!wallet) {
-      return Ok(res, { transactions: [] });
+      return Ok(res, { transactions: [], month, year });
     }
 
     const transactions = await Transaction.find({ walletId: wallet._id })
       .sort({ date: -1 })
       .lean();
 
-    return Ok(res, { transactions });
+    return Ok(res, { transactions, month, year });
   } catch (error) {
     console.error("getTransactions error:", error);
     return BadRequest(res, "Failed to fetch transactions");
