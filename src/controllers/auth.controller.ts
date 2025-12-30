@@ -5,14 +5,14 @@ import jwt from "jsonwebtoken";
 import { BadRequest, Created, Ok, Unauthorized } from "../middleware/response";
 
 export const register = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { name, email, password } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return BadRequest(res, "User already exists");
   }
 
-  const user = await User.create({ email, password });
+  const user = await User.create({ name, email, password });
   const token = jwt.sign(
     { userId: user._id },
     process.env.JWT_SECRET as string,
